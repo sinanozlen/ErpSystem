@@ -5,8 +5,8 @@ using ErpSystem.API.Models;
 
 namespace ErpSystem.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class CariAccountController : ControllerBase
     {
         private readonly ErpDbContext _context;
@@ -16,40 +16,74 @@ namespace ErpSystem.API.Controllers
             _context = context;
         }
 
+        // GET: api/CariAccount
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CariAccount>>> GetAccounts()
+        public async Task<ActionResult<IEnumerable<CariAccount>>> GetAll()
         {
-            return await _context.CariAccounts.ToListAsync();
+            var list = await _context.CariAccounts.AsNoTracking().ToListAsync();
+            return Ok(list);
         }
 
+        // GET: api/CariAccount/5
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<CariAccount>> Get(int id)
+        {
+            var item = await _context.CariAccounts.FindAsync(id);
+            if (item == null) return NotFound();
+            return Ok(item);
+        }
+
+        // POST: api/CariAccount
         [HttpPost]
-        public async Task<ActionResult<CariAccount>> PostAccount(CariAccount account)
+        public async Task<ActionResult<CariAccount>> Create([FromBody] CariAccount model)
         {
-            _context.CariAccounts.Add(account);
+            if (model == null) return BadRequest();
+
+            // Basit validation
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { title = "Name is required." });
+
+            // Ensure initial balance is set (optional business rule)
+            model.Balance = model.Balance;
+
+            _context.CariAccounts.Add(model);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetAccounts), new { id = account.Id }, account);
+
+            return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutAccount(int id, CariAccount account)
+        // PUT: api/CariAccount/5
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, [FromBody] CariAccount model)
         {
-            if (id != account.Id)
-                return BadRequest();
+            if (model == null || id != model.Id) return BadRequest();
 
-            _context.Entry(account).State = EntityState.Modified;
+            var existing = await _context.CariAccounts.FindAsync(id);
+            if (existing == null) return NotFound();
+
+            // Güncellenecek alanlar
+            existing.Name = model.Name;
+            existing.AccountType = model.AccountType;
+            existing.TaxId = model.TaxId;
+            existing.City = model.City;
+            existing.Balance = model.Balance;
+
+            _context.CariAccounts.Update(existing);
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAccount(int id)
+        // DELETE: api/CariAccount/5
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var acc = await _context.CariAccounts.FindAsync(id);
-            if (acc == null)
-                return NotFound();
+            var existing = await _context.CariAccounts.FindAsync(id);
+            if (existing == null) return NotFound();
 
-            _context.CariAccounts.Remove(acc);
+            _context.CariAccounts.Remove(existing);
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
     }
